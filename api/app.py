@@ -1,6 +1,10 @@
 import brevo_python as brevo
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, render_template
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 BREVO_API_KEY = os.getenv('BREVO_API_KEY')
 if not BREVO_API_KEY:
@@ -15,21 +19,19 @@ api_instance = brevo.TransactionalEmailsApi(brevo.ApiClient(configuration))
 app = Flask(__name__)
 
 # Define the email sending function
-def send_email():
+def send_email(recipient_email, recipient_name, subject, html_content):
     """Sends a transactional email using the Brevo API."""
     try:
         # The sender's email must be registered and authenticated in your Brevo account.
         sender_email = "shubhamaher758@gmail.com"
-        sender_name = "Shubham"
-        recipient_email = "shubhamaher909090@gmail.com"
-        recipient_name = "Receiver"
+        sender_name = "Amazon"
         
         # Create the email message object
         send_smtp_email = brevo.SendSmtpEmail(
             sender={"name": sender_name, "email": sender_email},
             to=[{"email": recipient_email, "name": recipient_name}],
-            subject="Brevo API Test Message",
-            html_content="<p>Hi,</p><p>This is a test message from your Flask server using the Brevo API.</p>"
+            subject=subject,
+            html_content=html_content
         )
         
         # Call the API to send the email
@@ -44,16 +46,27 @@ def send_email():
         return jsonify({"error": "An unexpected error occurred."}), 500
 
 # --- Flask Routes ---
-@app.route("/send-email", methods=['GET'])
+@app.route("/send-email", methods=['POST'])
 def trigger_email():
-    """Endpoint to trigger the email sending process."""
-    return send_email()
+    """Endpoint to trigger the email sending process with form data."""
+    data = request.form
+    recipient_email = data.get('recipient_email')
+    recipient_name = data.get('recipient_name')
+    subject = data.get('subject')
+    html_content = f"<p>{data.get('message')}</p>"
+    
+    if not all([recipient_email, recipient_name, subject, html_content]):
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    return send_email(recipient_email, recipient_name, subject, html_content)
 
 @app.route("/", methods=['GET'])
 def index():
-    """A simple index page."""
-    return "<h1>Brevo Email Sender</h1><p>Navigate to /send-email to send a test message.</p>"
+    """A simple index page with an email form."""
+    return render_template('index.html')
 
 if __name__ == '__main__':
+    # Make sure templates directory is properly set
+    app.template_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
     # Run the Flask app
     app.run(debug=True)
