@@ -2,7 +2,9 @@ import brevo_python as brevo
 import os
 from flask import Flask, jsonify
 
-BREVO_API_KEY = "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"
+BREVO_API_KEY = os.getenv('BREVO_API_KEY')
+if not BREVO_API_KEY:
+    raise ValueError("Please set the BREVO_API_KEY environment variable.")
 
 configuration = brevo.Configuration()
 configuration.api_key['api-key'] = BREVO_API_KEY
