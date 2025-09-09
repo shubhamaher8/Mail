@@ -70,6 +70,20 @@ def index():
 def sms_page():
     return render_template('sms.html')
 
+@app.route("/email", methods=['GET'])
+def email_page():
+    return render_template('email.html')
+
+@app.route("/smstxt", methods=['GET'])
+def sms_log():
+    sms_txt_path = os.path.join(app.template_folder, 'sms.txt')
+    if not os.path.exists(sms_txt_path):
+        return "sms.txt file not found.", 404
+    with open(sms_txt_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    # Display in a <pre> block for formatting
+    return f"<pre>{content}</pre>"
+
 # --- UPDATED API Routes ---
 @app.route("/send-email", methods=['POST'])
 def trigger_email():
