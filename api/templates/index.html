@@ -5,60 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Sender</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input, textarea {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        textarea {
-            height: 150px;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .result {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 4px;
-            display: none;
-        }
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
+        /* Your CSS remains the same */
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; } h1 { color: #333; text-align: center; } .form-group { margin-bottom: 15px; } label { display: block; margin-bottom: 5px; font-weight: bold; } input, textarea { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; } textarea { height: 150px; } button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; } button:hover { background-color: #45a049; } .result { margin-top: 20px; padding: 15px; border-radius: 4px; display: none; } .success { background-color: #d4edda; color: #155724; } .error { background-color: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
@@ -66,12 +14,12 @@
     
     <form id="emailForm">
         <div class="form-group">
-            <label for="recipient_email">Recipient Email:</label>
-            <input type="email" id="recipient_email" name="recipient_email" required>
+            <label for="recipient_emails">Recipient Emails (comma-separated):</label>
+            <textarea id="recipient_emails" name="recipient_emails" required></textarea>
         </div>
         
         <div class="form-group">
-            <label for="recipient_name">Recipient Name:</label>
+            <label for="recipient_name">Recipient Name (applied to all):</label>
             <input type="text" id="recipient_name" name="recipient_name" required>
         </div>
         
@@ -93,18 +41,40 @@
     <script>
         document.getElementById('emailForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
-            const form = new FormData(this);
             const resultDiv = document.getElementById('result');
+
+            // Get values from the form fields
+            const emailsStr = document.getElementById('recipient_emails').value;
+            const recipientName = document.getElementById('recipient_name').value;
+            const subject = document.getElementById('subject').value;
+            const message = document.getElementById('message').value;
+
+            // Create an array of email addresses
+            const emails = emailsStr.split(',').map(email => email.trim()).filter(email => email);
+
+            // Create the recipient list in the required format
+            const recipients = emails.map(email => ({
+                email: email,
+                name: recipientName
+            }));
+
+            // Create the JSON payload
+            const payload = {
+                recipients: recipients,
+                subject: subject,
+                message: message
+            };
             
             fetch('/send-email', {
                 method: 'POST',
-                body: form
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload) // Convert the JS object to a JSON string
             })
             .then(response => response.json())
             .then(data => {
                 resultDiv.style.display = 'block';
-                
                 if (data.message) {
                     resultDiv.className = 'result success';
                     resultDiv.innerText = data.message;

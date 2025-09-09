@@ -2,71 +2,120 @@ import brevo_python as brevo
 import os
 from flask import Flask, jsonify, request, render_template
 from dotenv import load_dotenv
+from twilio.rest import Client
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
+# --- Brevo Setup ---
 BREVO_API_KEY = os.getenv('BREVO_API_KEY')
 if not BREVO_API_KEY:
     raise ValueError("Please set the BREVO_API_KEY environment variable.")
-
 configuration = brevo.Configuration()
 configuration.api_key['api-key'] = BREVO_API_KEY
-
 api_instance = brevo.TransactionalEmailsApi(brevo.ApiClient(configuration))
 
-# --- Flask Server Setup ---
+# --- Twilio Setup ---
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
+twilio_client = None
+if all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER]):
+    twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+else:
+    print("⚠️ Warning: Twilio environment variables not set. SMS functionality will not work.")
+
+# --- Flask Setup ---
 app = Flask(__name__)
 
-# Define the email sending function
-def send_email(recipient_email, recipient_name, subject, html_content):
-    """Sends a transactional email using the Brevo API."""
-    try:
-        # The sender's email must be registered and authenticated in your Brevo account.
-        sender_email = "shubhamaher758@gmail.com"
-        sender_name = "Amazon"
-        
-        # Create the email message object
-        send_smtp_email = brevo.SendSmtpEmail(
-            sender={"name": sender_name, "email": sender_email},
-            to=[{"email": recipient_email, "name": recipient_name}],
-            subject=subject,
-            html_content=html_content
-        )
-        
-        # Call the API to send the email
-        api_instance.send_transac_email(send_smtp_email)
-        
-        return jsonify({"message": "Email sent successfully!"}), 200
-    except brevo.ApiException as e:
-        print("Exception when calling TransactionalEmailsApi->send_transac_email: %s\n" % e)
-        return jsonify({"error": "Failed to send email. Check server logs."}), 500
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return jsonify({"error": "An unexpected error occurred."}), 500
+# --- Helper Functions (send_email and send_sms are unchanged) ---
+def send_email(recipients, subject, html_content):
+    # This function remains the same
+    results = []
+    sender_email = "shubhamaher758@gmail.com"
+    sender_name = "Amazon"
+    for r in recipients:
+        try:
+            send_smtp_email = brevo.SendSmtpEmail(
+                sender={"name": sender_name, "email": sender_email},
+                to=[{"email": r["email"], "name": r.get("name", "")}],
+                subject=subject,
+                html_content=html_content
+            )
+            api_instance.send_transac_email(send_smtp_email)
+            results.append({"email": r["email"], "status": "sent"})
+        except Exception as e:
+            results.append({"email": r["email"], "status": "failed", "error": str(e)})
+    return results
 
-# --- Flask Routes ---
-@app.route("/send-email", methods=['POST'])
-def trigger_email():
-    """Endpoint to trigger the email sending process with form data."""
-    data = request.form
-    recipient_email = data.get('recipient_email')
-    recipient_name = data.get('recipient_name')
-    subject = data.get('subject')
-    html_content = f"<p>{data.get('message')}</p>"
-    
-    if not all([recipient_email, recipient_name, subject, html_content]):
-        return jsonify({"error": "Missing required fields"}), 400
-    
-    return send_email(recipient_email, recipient_name, subject, html_content)
+def send_sms(recipient_numbers, message):
+    # This function remains the same
+    if not twilio_client:
+        raise ConnectionError("Twilio client is not configured. Check environment variables.")
+    results = []
+    for number in recipient_numbers:
+        try:
+            msg = twilio_client.messages.create(body=message, from_=TWILIO_PHONE_NUMBER, to=number)
+            results.append({"number": number, "status": "sent", "sid": msg.sid})
+        except Exception as e:
+            results.append({"number": number, "status": "failed", "error": str(e)})
+    return results
 
+# --- Page Rendering Routes (Unchanged) ---
 @app.route("/", methods=['GET'])
 def index():
-    """A simple index page with an email form."""
     return render_template('index.html')
 
+@app.route("/sms", methods=['GET'])
+def sms_page():
+    return render_template('sms.html')
+
+# --- UPDATED API Routes ---
+@app.route("/send-email", methods=['POST'])
+def trigger_email():
+    try:
+        # Get data from the JSON body of the request
+        data = request.get_json()
+        recipients = data.get("recipients")
+        subject = data.get("subject")
+        message = data.get("message")
+
+        if not all([recipients, subject, message]) or not isinstance(recipients, list):
+            return jsonify({"error": "Invalid payload. 'recipients' (list), 'subject', and 'message' are required."}), 400
+
+        html_content = message
+        results = send_email(recipients, subject, html_content)
+        
+        failed = [res for res in results if res['status'] == 'failed']
+        if failed:
+            return jsonify({"error": f"Failed to send to: {', '.join([f['email'] for f in failed])}"}), 500
+        return jsonify({"message": f"Successfully sent email to {len(recipients)} recipient(s)."}), 200
+    except Exception as e:
+        return jsonify({"error": "An internal server error occurred."}), 500
+
+@app.route("/send-sms", methods=['POST'])
+def trigger_sms():
+    try:
+        # Get data from the JSON body of the request
+        data = request.get_json()
+        recipient_numbers = data.get("recipient_numbers")
+        message = data.get("message")
+
+        if not all([recipient_numbers, message]) or not isinstance(recipient_numbers, list):
+            return jsonify({"error": "Invalid payload. 'recipient_numbers' (list) and 'message' are required."}), 400
+
+        results = send_sms(recipient_numbers, message)
+
+        failed = [res for res in results if res['status'] == 'failed']
+        if failed:
+            return jsonify({"error": f"Failed to send to: {', '.join([f['number'] for f in failed])}"}), 500
+        return jsonify({"message": f"Successfully sent SMS to {len(recipient_numbers)} number(s)."}), 200
+    except ConnectionError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": "An internal server error occurred."}), 500
+
+# --- Run ---
 if __name__ == '__main__':
-    # Make sure templates directory is properly set
     app.template_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
-    # Run the Flask app
     app.run(debug=True)
