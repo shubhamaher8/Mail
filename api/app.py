@@ -1,6 +1,7 @@
 import brevo_python as brevo
 import os
 from flask import Flask, jsonify, request, render_template
+from flask_cors import CORS # Import CORS
 from dotenv import load_dotenv
 from twilio.rest import Client
 
@@ -27,6 +28,7 @@ else:
 
 # --- Flask Setup ---
 app = Flask(__name__)
+CORS(app) # Enable CORS for all routes
 
 # --- Helper Functions (send_email and send_sms are unchanged) ---
 def send_email(recipients, subject, html_content):
