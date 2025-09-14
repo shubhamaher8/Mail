@@ -3,50 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Exclusive Offer</title>
+    <title>Email Sender</title>
+    <style>
+        /* Your CSS remains the same */
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; } h1 { color: #333; text-align: center; } .form-group { margin-bottom: 15px; } label { display: block; margin-bottom: 5px; font-weight: bold; } input, textarea { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; } textarea { height: 150px; } button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; } button:hover { background-color: #45a049; } .result { margin-top: 20px; padding: 15px; border-radius: 4px; display: none; } .success { background-color: #d4edda; color: #155724; } .error { background-color: #f8d7da; color: #721c24; }
+    </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-    <table align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="border-collapse: collapse; margin-top: 20px; background-color: #ffffff;">
-        <tr>
-            <td align="center" style="background-color: #ffffff; padding: 20px 0;">
-                <img src="https://www.prideindustries.com/wp-content/uploads/2021/06/Customer-logo_Amazon-1-768x384.png" alt="Amazon Logo" width="120" style="display: block;" />
-            </td>
-        </tr>
-        <tr>
-            <td style="padding: 40px 30px;">
-                <h1 style="font-size: 24px; color: #111111; margin: 0;">Hello Customer,</h1>
-                <p style="font-size: 16px; color: #333333; line-height: 1.5; margin: 20px 0;">
-                    You've been selected for an <strong style="color: #000000;">exclusive offer</strong>!
-                </p>
-                <p style="font-size: 16px; color: #333333; line-height: 1.5; margin: 20px 0;">
-                    Avail a special <strong style="color: #000000;">80% discount on Amazon Shopping.</strong> Don't miss this limited-time opportunity to shop your favorite products at unbeatable prices.
-                <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                    <tr>
-                        <td align="center" style="padding: 20px 0;">
-                            <a href="https://socialguard-backend.onrender.com" target="_blank" style="background-color: #ebeb33; color: #111111; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">Click Here</a>
-                        </td>
-                    </tr>
-                </table>
-                <p style="font-size: 16px; color: #333333; line-height: 1.5; margin: 20px 0;">
-                    This offer is valid for a limited time. Don't miss out!
-                </p>
-                <p style="font-size: 16px; color: #333333; line-height: 1.5; margin: 20px 0;">
-                    If you have any questions, visit our <a href="https://www.amazon.in/gp/help/customer/display.html" target="_blank" style="color: #0066c0; text-decoration: none;">Help Center</a>.
-                </p>
-            </td>
-        </tr>
-        <tr>
-            <td style="background-color: #f4f4f4; padding: 20px 30px; text-align: center;">
-                <p style="font-size: 12px; color: #666666; margin: 0;">
-                    © 2025 Amazon.com, Inc. or its affiliates. All rights reserved.
-                </p>
-                <p style="font-size: 12px; color: #666666; margin: 10px 0 0;">
-                    <a href="https://www.amazon.in" target="_blank" style="color: #0066c0; text-decoration: none;">Amazon.in</a> |
-                    <a href="https://www.amazon.in/gp/help/customer/display.html" target="_blank" style="color: #0066c0; text-decoration: none;">Help</a> |
-                    <a href="https://www.amazon.in/gp/help/customer/display.html?nodeId=200507590" target="_blank" style="color: #0066c0; text-decoration: none;">Unsubscribe</a>
-                </p>
-            </td>
-        </tr>
-    </table>
+<body>
+    <h1>Email Sender</h1>
+    
+    <form id="emailForm">
+        <div class="form-group">
+            <label for="recipient_emails">Recipient Emails (comma-separated):</label>
+            <textarea id="recipient_emails" name="recipient_emails" required></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="recipient_name">Recipient Name (applied to all):</label>
+            <input type="text" id="recipient_name" name="recipient_name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="subject">Subject:</label>
+            <input type="text" id="subject" name="subject" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="message">Message:</label>
+            <textarea id="message" name="message" required></textarea>
+        </div>
+        
+        <button type="submit">Send Email</button>
+    </form>
+    
+    <div id="result" class="result"></div>
+    
+    <script>
+        document.getElementById('emailForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const resultDiv = document.getElementById('result');
+
+            // Get values from the form fields
+            const emailsStr = document.getElementById('recipient_emails').value;
+            const recipientName = document.getElementById('recipient_name').value;
+            const subject = document.getElementById('subject').value;
+            const message = document.getElementById('message').value;
+
+            // Create an array of email addresses
+            const emails = emailsStr.split(',').map(email => email.trim()).filter(email => email);
+
+            // Create the recipient list in the required format
+            const recipients = emails.map(email => ({
+                email: email,
+                name: recipientName
+            }));
+
+            // Create the JSON payload
+            const payload = {
+                recipients: recipients,
+                subject: subject,
+                message: message
+            };
+            
+            fetch('/send-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload) // Convert the JS object to a JSON string
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultDiv.style.display = 'block';
+                if (data.message) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerText = data.message;
+                    document.getElementById('emailForm').reset();
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerText = data.error || 'An error occurred';
+                }
+            })
+            .catch(error => {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerText = 'An error occurred while sending the email';
+                console.error('Error:', error);
+            });
+        });
+    </script>
 </body>
 </html>

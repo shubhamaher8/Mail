@@ -63,18 +63,19 @@ def send_sms(recipient_numbers, message):
             results.append({"number": number, "status": "failed", "error": str(e)})
     return results
 
-# --- Page Rendering Routes (Unchanged) ---
+# --- Page Rendering Routes ---
+
 @app.route("/", methods=['GET'])
-def index():
-    return render_template('index.html')
+def email_sender_page():
+    return render_template('email.html')
 
 @app.route("/sms", methods=['GET'])
-def sms_page():
+def sms_sender_page():
     return render_template('sms.html')
 
-@app.route("/email", methods=['GET'])
-def email_page():
-    return render_template('email.html')
+@app.route("/emailtxt", methods=['GET'])
+def email_text_template_page():
+    return render_template('emailtxt.html')
 
 @app.route("/smstxt", methods=['GET'])
 def smstxt_page():
