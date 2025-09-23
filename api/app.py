@@ -34,8 +34,8 @@ CORS(app) # Enable CORS for all routes
 def send_email(recipients, subject, html_content):
     # This function remains the same
     results = []
-    sender_email = "shubhamaher758@gmail.com"
-    sender_name = "Amazon"
+    sender_email = "dchitale07@gmail.com"
+    sender_name = "Test Sender"
     for r in recipients:
         try:
             send_smtp_email = brevo.SendSmtpEmail(
